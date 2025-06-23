@@ -1,0 +1,363 @@
+-- Update pharmacy information
+CREATE OR REPLACE PROCEDURE update_pharmacy(
+    p_name VARCHAR2,
+    p_new_address VARCHAR2 DEFAULT NULL,
+    p_new_phone VARCHAR2 DEFAULT NULL
+) IS
+    v_address PHARMACY.ADDRESS%TYPE;
+    v_phone PHARMACY.PHONE%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT ADDRESS, PHONE INTO v_address, v_phone
+    FROM PHARMACY
+    WHERE NAME = p_name;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_address := NVL(p_new_address, v_address);
+    v_phone := NVL(p_new_phone, v_phone);
+    
+    -- Update the pharmacy
+    UPDATE PHARMACY
+    SET ADDRESS = v_address,
+        PHONE = v_phone
+    WHERE NAME = p_name;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Pharmacy updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Pharmacy not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Pharmacy not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_pharmacy;
+/
+
+-- Update pharmaceutical company information
+CREATE OR REPLACE PROCEDURE update_pharma_company(
+    p_name VARCHAR2,
+    p_new_phone VARCHAR2 DEFAULT NULL
+) IS
+    v_phone PHARMACEUTICAL_COMPANY.PHONE%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT PHONE INTO v_phone
+    FROM PHARMACEUTICAL_COMPANY
+    WHERE NAME = p_name;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_phone := NVL(p_new_phone, v_phone);
+    
+    -- Update the company
+    UPDATE PHARMACEUTICAL_COMPANY
+    SET PHONE = v_phone
+    WHERE NAME = p_name;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Pharmaceutical company updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Pharmaceutical company not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Pharmaceutical company not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_pharma_company;
+/
+
+-- Update patient information
+CREATE OR REPLACE PROCEDURE update_patient(
+    p_aadharid VARCHAR2,
+    p_new_name VARCHAR2 DEFAULT NULL,
+    p_new_address VARCHAR2 DEFAULT NULL,
+    p_new_age NUMBER DEFAULT NULL,
+    p_new_pdocid VARCHAR2 DEFAULT NULL
+) IS
+    v_name PATIENT.NAME%TYPE;
+    v_address PATIENT.ADDRESS%TYPE;
+    v_age PATIENT.AGE%TYPE;
+    v_pdocid PATIENT.PDOCID%TYPE;
+    v_count NUMBER;
+    v_doctor_exists NUMBER;
+BEGIN
+    -- Get current values
+    SELECT NAME, ADDRESS, AGE, PDOCID INTO v_name, v_address, v_age, v_pdocid
+    FROM PATIENT
+    WHERE AADHARID = p_aadharid;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_name := NVL(p_new_name, v_name);
+    v_address := NVL(p_new_address, v_address);
+    v_age := NVL(p_new_age, v_age);
+    
+    -- Check if new doctor exists if changing doctor
+    IF p_new_pdocid IS NOT NULL AND p_new_pdocid != v_pdocid THEN
+        SELECT COUNT(*) INTO v_doctor_exists
+        FROM DOCTOR
+        WHERE AADHARID = p_new_pdocid;
+        
+        IF v_doctor_exists = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Error: Doctor with ID ' || p_new_pdocid || ' does not exist');
+            RETURN;
+        END IF;
+        
+        v_pdocid := p_new_pdocid;
+    END IF;
+    
+    -- Update the patient
+    UPDATE PATIENT
+    SET NAME = v_name,
+        ADDRESS = v_address,
+        AGE = v_age,
+        PDOCID = v_pdocid
+    WHERE AADHARID = p_aadharid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Patient updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Patient not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Patient not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_patient;
+/
+
+-- Update doctor information
+CREATE OR REPLACE PROCEDURE update_doctor(
+    p_aadharid VARCHAR2,
+    p_new_name VARCHAR2 DEFAULT NULL,
+    p_new_spec VARCHAR2 DEFAULT NULL,
+    p_new_experience NUMBER DEFAULT NULL
+) IS
+    v_name DOCTOR.NAME%TYPE;
+    v_spec DOCTOR.SPEC%TYPE;
+    v_experience DOCTOR.EXPERIENCE%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT NAME, SPEC, EXPERIENCE INTO v_name, v_spec, v_experience
+    FROM DOCTOR
+    WHERE AADHARID = p_aadharid;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_name := NVL(p_new_name, v_name);
+    v_spec := NVL(p_new_spec, v_spec);
+    v_experience := NVL(p_new_experience, v_experience);
+    
+    -- Update the doctor
+    UPDATE DOCTOR
+    SET NAME = v_name,
+        SPEC = v_spec,
+        EXPERIENCE = v_experience
+    WHERE AADHARID = p_aadharid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Doctor updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Doctor not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Doctor not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_doctor;
+/
+
+-- Update drug information
+CREATE OR REPLACE PROCEDURE update_drug(
+    p_tname VARCHAR2,
+    p_cname VARCHAR2,
+    p_new_formula VARCHAR2 DEFAULT NULL
+) IS
+    v_formula DRUG.FORMULA%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT FORMULA INTO v_formula
+    FROM DRUG
+    WHERE TNAME = p_tname AND CNAME = p_cname;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_formula := NVL(p_new_formula, v_formula);
+    
+    -- Update the drug
+    UPDATE DRUG
+    SET FORMULA = v_formula
+    WHERE TNAME = p_tname AND CNAME = p_cname;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Drug updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Drug not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Drug not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_drug;
+/
+
+-- Update prescription information
+CREATE OR REPLACE PROCEDURE update_prescription(
+    p_presid VARCHAR2,
+    p_new_date DATE DEFAULT NULL,
+    p_new_quantity NUMBER DEFAULT NULL
+) IS
+    v_date PRESCRIPTION.DATE%TYPE;
+    v_quantity PRESCRIPTION.QUANTITY%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT DATE, QUANTITY INTO v_date, v_quantity
+    FROM PRESCRIPTION
+    WHERE PRESID = p_presid;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_date := NVL(p_new_date, v_date);
+    v_quantity := NVL(p_new_quantity, v_quantity);
+    
+    -- Update the prescription
+    UPDATE PRESCRIPTION
+    SET DATE = v_date,
+        QUANTITY = v_quantity
+    WHERE PRESID = p_presid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Prescription updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Prescription not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Prescription not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_prescription;
+/
+
+-- Update contract information
+CREATE OR REPLACE PROCEDURE update_contract(
+    p_contrid VARCHAR2,
+    p_new_sdate DATE DEFAULT NULL,
+    p_new_edate DATE DEFAULT NULL,
+    p_new_content VARCHAR2 DEFAULT NULL,
+    p_new_supervisor VARCHAR2 DEFAULT NULL
+) IS
+    v_sdate CONTRACT.SDATE%TYPE;
+    v_edate CONTRACT.EDATE%TYPE;
+    v_content CONTRACT.CONTENT%TYPE;
+    v_supervisor CONTRACT.SUPERVISOR%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT SDATE, EDATE, CONTENT, SUPERVISOR 
+    INTO v_sdate, v_edate, v_content, v_supervisor
+    FROM CONTRACT
+    WHERE CONTRID = p_contrid;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_sdate := NVL(p_new_sdate, v_sdate);
+    v_edate := NVL(p_new_edate, v_edate);
+    v_content := NVL(p_new_content, v_content);
+    v_supervisor := NVL(p_new_supervisor, v_supervisor);
+    
+    -- Validate dates
+    IF v_sdate > v_edate THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Start date cannot be later than end date');
+        RETURN;
+    END IF;
+    
+    -- Update the contract
+    UPDATE CONTRACT
+    SET SDATE = v_sdate,
+        EDATE = v_edate,
+        CONTENT = v_content,
+        SUPERVISOR = v_supervisor
+    WHERE CONTRID = p_contrid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Contract updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Contract not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Contract not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_contract;
+/
+
+-- Update pharmacy drug information (stock and price)
+CREATE OR REPLACE PROCEDURE update_pharma_drug(
+    p_pharmacy_name VARCHAR2,
+    p_tname VARCHAR2,
+    p_cname VARCHAR2,
+    p_new_price NUMBER DEFAULT NULL,
+    p_new_quantity NUMBER DEFAULT NULL
+) IS
+    v_price PHARMA_DRUG.PRICE%TYPE;
+    v_quantity PHARMA_DRUG.QUANTITY%TYPE;
+    v_count NUMBER;
+BEGIN
+    -- Get current values
+    SELECT PRICE, QUANTITY INTO v_price, v_quantity
+    FROM PHARMA_DRUG
+    WHERE NAME = p_pharmacy_name AND TNAME = p_tname AND CNAME = p_cname;
+    
+    -- Use new values if provided, otherwise keep current values
+    v_price := NVL(p_new_price, v_price);
+    v_quantity := NVL(p_new_quantity, v_quantity);
+    
+    -- Update the pharmacy drug
+    UPDATE PHARMA_DRUG
+    SET PRICE = v_price,
+        QUANTITY = v_quantity
+    WHERE NAME = p_pharmacy_name AND TNAME = p_tname AND CNAME = p_cname;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Pharmacy drug updated successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Pharmacy drug not found');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Pharmacy drug not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END update_pharma_drug;
+/
