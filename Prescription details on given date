@@ -1,0 +1,57 @@
+CREATE OR REPLACE PROCEDURE get_prescription_details(
+    p_patient_id VARCHAR2,
+    p_date DATE
+) IS
+    CURSOR c_prescription_drugs IS
+        SELECT pd.TNAME, pd.CNAME, d.FORMULA, p.QUANTITY
+        FROM PRESCRIPTION p
+        JOIN PRES_DRUG pd ON p.PRESID = pd.PRESID
+        JOIN DRUG d ON pd.TNAME = d.TNAME AND pd.CNAME = d.CNAME
+        WHERE p.PID = p_patient_id AND p.DATE = p_date;
+        
+    v_patient_name PATIENT.NAME%TYPE;
+    v_doctor_name DOCTOR.NAME%TYPE;
+    v_prescription_id PRESCRIPTION.PRESID%TYPE;
+    v_record_found BOOLEAN := FALSE;
+BEGIN
+    -- Get patient name
+    SELECT NAME INTO v_patient_name FROM PATIENT WHERE AADHARID = p_patient_id;
+    
+    -- Get doctor name and prescription ID
+    BEGIN
+        SELECT d.NAME, p.PRESID 
+        INTO v_doctor_name, v_prescription_id
+        FROM PRESCRIPTION p
+        JOIN DOCTOR d ON p.DOCID = d.AADHARID
+        WHERE p.PID = p_patient_id AND p.DATE = p_date;
+        
+        v_record_found := TRUE;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('No prescription found for patient ' || 
+                                 v_patient_name || ' on ' || TO_CHAR(p_date, 'DD-MON-YYYY'));
+            RETURN;
+    END;
+    
+    -- Print prescription details
+    DBMS_OUTPUT.PUT_LINE('Prescription Details');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Prescription ID: ' || v_prescription_id);
+    DBMS_OUTPUT.PUT_LINE('Date: ' || TO_CHAR(p_date, 'DD-MON-YYYY'));
+    DBMS_OUTPUT.PUT_LINE('Patient: ' || v_patient_name);
+    DBMS_OUTPUT.PUT_LINE('Doctor: ' || v_doctor_name);
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Prescribed Drugs:');
+    
+    FOR rec IN c_prescription_drugs LOOP
+        DBMS_OUTPUT.PUT_LINE('- ' || rec.TNAME || ' (by ' || rec.CNAME || ')');
+        DBMS_OUTPUT.PUT_LINE('  Formula: ' || rec.FORMULA);
+        DBMS_OUTPUT.PUT_LINE('  Quantity: ' || rec.QUANTITY);
+    END LOOP;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Patient not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END get_prescription_details;
+/
