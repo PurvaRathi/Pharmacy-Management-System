@@ -1,0 +1,51 @@
+CREATE OR REPLACE PROCEDURE get_pharmacy_company_contracts(
+    p_pharmacy_name VARCHAR2,
+    p_company_name VARCHAR2
+) IS
+    CURSOR c_contracts IS
+        SELECT CONTRID, SDATE, EDATE, CONTENT, SUPERVISOR
+        FROM CONTRACT
+        WHERE PNAME = p_pharmacy_name AND CNAME = p_company_name
+        ORDER BY EDATE DESC;
+        
+    v_pharmacy_phone PHARMACY.PHONE%TYPE;
+    v_company_phone PHARMACEUTICAL_COMPANY.PHONE%TYPE;
+    v_contract_count NUMBER := 0;
+BEGIN
+    -- Get pharmacy phone
+    SELECT PHONE INTO v_pharmacy_phone 
+    FROM PHARMACY 
+    WHERE NAME = p_pharmacy_name;
+    
+    -- Get company phone
+    SELECT PHONE INTO v_company_phone 
+    FROM PHARMACEUTICAL_COMPANY 
+    WHERE NAME = p_company_name;
+    
+    DBMS_OUTPUT.PUT_LINE('Contract Details between ' || p_pharmacy_name || ' and ' || p_company_name);
+    DBMS_OUTPUT.PUT_LINE('Pharmacy Phone: ' || v_pharmacy_phone);
+    DBMS_OUTPUT.PUT_LINE('Company Phone: ' || v_company_phone);
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    
+    FOR rec IN c_contracts LOOP
+        DBMS_OUTPUT.PUT_LINE('Contract ID: ' || rec.CONTRID);
+        DBMS_OUTPUT.PUT_LINE('Period: ' || TO_CHAR(rec.SDATE, 'DD-MON-YYYY') || 
+                            ' to ' || TO_CHAR(rec.EDATE, 'DD-MON-YYYY'));
+        DBMS_OUTPUT.PUT_LINE('Content: ' || rec.CONTENT);
+        DBMS_OUTPUT.PUT_LINE('Supervisor: ' || rec.SUPERVISOR);
+        DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+        v_contract_count := v_contract_count + 1;
+    END LOOP;
+    
+    IF v_contract_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('No contracts found between this pharmacy and company');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Total contracts: ' || v_contract_count);
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Pharmacy or company not found');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END get_pharmacy_company_contracts;
+/
