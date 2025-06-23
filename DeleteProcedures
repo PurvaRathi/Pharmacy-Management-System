@@ -1,0 +1,271 @@
+-- Delete a pharmacy
+CREATE OR REPLACE PROCEDURE delete_pharmacy(
+    p_name VARCHAR2
+) IS
+    v_count NUMBER;
+    v_contract_count NUMBER;
+    v_pharma_drug_count NUMBER;
+BEGIN
+    -- Check for existing contracts
+    SELECT COUNT(*) INTO v_contract_count
+    FROM CONTRACT
+    WHERE PNAME = p_name;
+    
+    -- Check for existing pharma_drugs
+    SELECT COUNT(*) INTO v_pharma_drug_count
+    FROM PHARMA_DRUG
+    WHERE NAME = p_name;
+    
+    IF v_contract_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete pharmacy. ' || v_contract_count || ' active contracts exist.');
+        RETURN;
+    END IF;
+    
+    IF v_pharma_drug_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete pharmacy. ' || v_pharma_drug_count || ' drugs are associated with this pharmacy.');
+        RETURN;
+    END IF;
+    
+    DELETE FROM PHARMACY WHERE NAME = p_name;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Pharmacy deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Pharmacy not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_pharmacy;
+/
+
+
+-- Delete a pharmaceutical company
+CREATE OR REPLACE PROCEDURE delete_pharma_company(
+    p_name VARCHAR2
+) IS
+    v_count NUMBER;
+    v_contract_count NUMBER;
+    v_drug_count NUMBER;
+BEGIN
+    -- Check for existing contracts
+    SELECT COUNT(*) INTO v_contract_count
+    FROM CONTRACT
+    WHERE CNAME = p_name;
+    
+    -- Check for existing drugs
+    SELECT COUNT(*) INTO v_drug_count
+    FROM DRUG
+    WHERE CNAME = p_name;
+    
+    IF v_contract_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete company. ' || v_contract_count || ' active contracts exist.');
+        RETURN;
+    END IF;
+    
+    -- Delete associated drugs first (cascade delete)
+    DELETE FROM DRUG WHERE CNAME = p_name;
+    DBMS_OUTPUT.PUT_LINE(SQL%ROWCOUNT || ' drugs deleted from this company');
+    
+    -- Now delete the company
+    DELETE FROM PHARMACEUTICAL_COMPANY WHERE NAME = p_name;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Pharmaceutical company deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Pharmaceutical company not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_pharma_company;
+/
+
+
+-- Delete a patient
+CREATE OR REPLACE PROCEDURE delete_patient(
+    p_aadharid VARCHAR2
+) IS
+    v_count NUMBER;
+    v_prescription_count NUMBER;
+BEGIN
+    -- Check for existing prescriptions
+    SELECT COUNT(*) INTO v_prescription_count
+    FROM PRESCRIPTION
+    WHERE PID = p_aadharid;
+    
+    IF v_prescription_count > 0 THEN
+        -- Delete associated prescriptions first
+        DELETE FROM PRES_DRUG 
+        WHERE PRESID IN (SELECT PRESID FROM PRESCRIPTION WHERE PID = p_aadharid);
+        
+        DELETE FROM PRESCRIPTION WHERE PID = p_aadharid;
+        DBMS_OUTPUT.PUT_LINE(v_prescription_count || ' prescriptions deleted for this patient');
+    END IF;
+    
+    -- Now delete the patient
+    DELETE FROM PATIENT WHERE AADHARID = p_aadharid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Patient deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Patient not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_patient;
+/
+
+
+-- Delete a doctor
+CREATE OR REPLACE PROCEDURE delete_doctor(
+    p_aadharid VARCHAR2
+) IS
+    v_count NUMBER;
+    v_prescription_count NUMBER;
+    v_patient_count NUMBER;
+BEGIN
+    -- Check for existing prescriptions
+    SELECT COUNT(*) INTO v_prescription_count
+    FROM PRESCRIPTION
+    WHERE DOCID = p_aadharid;
+    
+    -- Check for patients with this doctor as primary
+    SELECT COUNT(*) INTO v_patient_count
+    FROM PATIENT
+    WHERE PDOCID = p_aadharid;
+    
+    IF v_prescription_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete doctor. ' || v_prescription_count || ' prescriptions exist.');
+        RETURN;
+    END IF;
+    
+    IF v_patient_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete doctor. ' || v_patient_count || ' patients have this doctor as primary.');
+        RETURN;
+    END IF;
+    
+    -- Now delete the doctor
+    DELETE FROM DOCTOR WHERE AADHARID = p_aadharid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Doctor deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Doctor not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_doctor;
+/
+
+
+-- Delete a drug
+CREATE OR REPLACE PROCEDURE delete_drug(
+    p_tname VARCHAR2,
+    p_cname VARCHAR2
+) IS
+    v_count NUMBER;
+    v_pres_drug_count NUMBER;
+    v_pharma_drug_count NUMBER;
+BEGIN
+    -- Check for existing prescriptions with this drug
+    SELECT COUNT(*) INTO v_pres_drug_count
+    FROM PRES_DRUG
+    WHERE TNAME = p_tname AND CNAME = p_cname;
+    
+    -- Check for pharmacies selling this drug
+    SELECT COUNT(*) INTO v_pharma_drug_count
+    FROM PHARMA_DRUG
+    WHERE TNAME = p_tname AND CNAME = p_cname;
+    
+    IF v_pres_drug_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete drug. ' || v_pres_drug_count || ' prescriptions include this drug.');
+        RETURN;
+    END IF;
+    
+    IF v_pharma_drug_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Cannot delete drug. ' || v_pharma_drug_count || ' pharmacies sell this drug.');
+        RETURN;
+    END IF;
+    
+    -- Now delete the drug
+    DELETE FROM DRUG WHERE TNAME = p_tname AND CNAME = p_cname;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Drug deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Drug not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_drug;
+/
+
+
+-- Delete a prescription
+CREATE OR REPLACE PROCEDURE delete_prescription(
+    p_presid VARCHAR2
+) IS
+    v_count NUMBER;
+BEGIN
+    -- Delete associated prescription drugs first
+    DELETE FROM PRES_DRUG WHERE PRESID = p_presid;
+    DBMS_OUTPUT.PUT_LINE(SQL%ROWCOUNT || ' drugs removed from prescription');
+    
+    -- Now delete the prescription
+    DELETE FROM PRESCRIPTION WHERE PRESID = p_presid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Prescription deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Prescription not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_prescription;
+/
+
+
+-- Delete a contract
+CREATE OR REPLACE PROCEDURE delete_contract(
+    p_contrid VARCHAR2
+) IS
+    v_count NUMBER;
+BEGIN
+    DELETE FROM CONTRACT WHERE CONTRID = p_contrid;
+    
+    v_count := SQL%ROWCOUNT;
+    IF v_count > 0 THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Contract deleted successfully');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Contract not found');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END delete_contract;
+/
