@@ -1,0 +1,182 @@
+-- This procedure adds a new pharmacy to the system
+CREATE OR REPLACE PROCEDURE add_pharmacy(
+    p_name VARCHAR2,
+    p_address VARCHAR2,
+    p_phone VARCHAR2
+) IS
+BEGIN
+    INSERT INTO PHARMACY(NAME, ADDRESS, PHONE)
+    VALUES(p_name, p_address, p_phone);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Pharmacy added successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Pharmacy with this name already exists');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_pharmacy;
+/
+
+-- This procedure adds a new pharmaceutical company
+CREATE OR REPLACE PROCEDURE add_pharma_company(
+    p_name VARCHAR2,
+    p_phone VARCHAR2
+) IS
+BEGIN
+    INSERT INTO PHARMACEUTICAL_COMPANY(NAME, PHONE)
+    VALUES(p_name, p_phone);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Pharmaceutical company added successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Company with this name already exists');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_pharma_company;
+/
+
+-- This procedure adds a new patient
+CREATE OR REPLACE PROCEDURE add_patient(
+    p_aadharid VARCHAR2,
+    p_name VARCHAR2,
+    p_address VARCHAR2,
+    p_age NUMBER,
+    p_pdocid VARCHAR2
+) IS
+BEGIN
+    INSERT INTO PATIENT(AADHARID, NAME, ADDRESS, AGE, PDOCID)
+    VALUES(p_aadharid, p_name, p_address, p_age, p_pdocid);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Patient added successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Patient with this Aadhar ID already exists');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_patient;
+/
+
+-- This procedure adds a new doctor
+CREATE OR REPLACE PROCEDURE add_doctor(
+    p_aadharid VARCHAR2,
+    p_name VARCHAR2,
+    p_spec VARCHAR2,
+    p_experience NUMBER
+) IS
+BEGIN
+    INSERT INTO DOCTOR(AADHARID, NAME, SPEC, EXPERIENCE)
+    VALUES(p_aadharid, p_name, p_spec, p_experience);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Doctor added successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Doctor with this Aadhar ID already exists');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_doctor;
+/
+
+-- This procedure adds a new drug
+CREATE OR REPLACE PROCEDURE add_drug(
+    p_tname VARCHAR2,
+    p_cname VARCHAR2,
+    p_formula VARCHAR2
+) IS
+BEGIN
+    INSERT INTO DRUG(TNAME, CNAME, FORMULA)
+    VALUES(p_tname, p_cname, p_formula);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Drug added successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Drug with this trade name already exists for this company');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_drug;
+/
+
+-- This procedure adds a new prescription
+CREATE OR REPLACE PROCEDURE add_prescription(
+    p_presid VARCHAR2,
+    p_date DATE,
+    p_quantity NUMBER,
+    p_docid VARCHAR2,
+    p_pid VARCHAR2
+) IS
+    v_existing_count NUMBER;
+BEGIN
+    -- Check if a prescription already exists for this patient from this doctor on this date
+    SELECT COUNT(*) INTO v_existing_count
+    FROM PRESCRIPTION
+    WHERE DOCID = p_docid AND PID = p_pid AND DATE = p_date;
+    
+    IF v_existing_count > 0 THEN
+        -- Update the existing prescription
+        UPDATE PRESCRIPTION
+        SET QUANTITY = p_quantity
+        WHERE DOCID = p_docid AND PID = p_pid AND DATE = p_date;
+        DBMS_OUTPUT.PUT_LINE('Prescription updated successfully');
+    ELSE
+        -- Insert new prescription
+        INSERT INTO PRESCRIPTION(PRESID, DATE, QUANTITY, DOCID, PID)
+        VALUES(p_presid, p_date, p_quantity, p_docid, p_pid);
+        DBMS_OUTPUT.PUT_LINE('Prescription added successfully');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Prescription with this ID already exists');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_prescription;
+/
+
+-- This procedure adds a drug to a prescription
+CREATE OR REPLACE PROCEDURE add_pres_drug(
+    p_presid VARCHAR2,
+    p_tname VARCHAR2,
+    p_cname VARCHAR2
+) IS
+BEGIN
+    INSERT INTO PRES_DRUG(PRESID, TNAME, CNAME)
+    VALUES(p_presid, p_tname, p_cname);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Drug added to prescription successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: This drug is already in this prescription');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_pres_drug;
+/
+
+-- This procedure adds a contract between pharmacy and pharmaceutical company
+CREATE OR REPLACE PROCEDURE add_contract(
+    p_contrid VARCHAR2,
+    p_sdate DATE,
+    p_edate DATE,
+    p_content VARCHAR2,
+    p_cname VARCHAR2,
+    p_pname VARCHAR2,
+    p_supervisor VARCHAR2
+) IS
+BEGIN
+    INSERT INTO CONTRACT(CONTRID, SDATE, EDATE, CONTENT, CNAME, PNAME, SUPERVISOR)
+    VALUES(p_contrid, p_sdate, p_edate, p_content, p_cname, p_pname, p_supervisor);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Contract added successfully');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Contract with this ID already exists');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END add_contract;
+/
